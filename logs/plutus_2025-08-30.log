@@ -1,0 +1,10 @@
+2025-08-30 00:06:50,000 - app.main - INFO - Setting up Plutus Banking Backend...
+2025-08-30 00:06:50,000 - app.main - INFO - Setting up Plutus Banking Backend...
+2025-08-30 00:07:28,747 - app.main - INFO - Request 3b7d07be-edba-43b5-badb-1fb2f9c6901f: GET http://localhost:8000/
+2025-08-30 00:07:28,751 - app.main - INFO - Request 3b7d07be-edba-43b5-badb-1fb2f9c6901f completed: Status 200 in 0.0041s
+2025-08-30 00:07:29,473 - app.main - INFO - Request a1997633-f166-4015-9f18-c4f3e7e9cb75: GET http://localhost:8000/favicon.ico
+2025-08-30 00:07:29,476 - app.main - INFO - Request a1997633-f166-4015-9f18-c4f3e7e9cb75 completed: Status 404 in 0.0030s
+2025-08-30 00:07:36,129 - app.main - INFO - Request 32aece45-20a6-4412-b7f2-3b3a80de840e: GET http://localhost:8000/redoc
+2025-08-30 00:07:36,133 - app.main - INFO - Request 32aece45-20a6-4412-b7f2-3b3a80de840e completed: Status 200 in 0.0037s
+2025-08-30 00:07:36,818 - app.main - INFO - Request 399b11ca-7595-4fa7-9c4b-aed6719f2f00: GET http://localhost:8000/openapi.json
+2025-08-30 00:07:36,868 - app.main - INFO - Request 399b11ca-7595-4fa7-9c4b-aed6719f2f00 completed: Status 200 in 0.0514s

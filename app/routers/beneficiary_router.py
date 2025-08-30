@@ -42,10 +42,7 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
     if not token_payload["valid"]:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "message": "Invalid or expired token",
-                "error_code": "INVALID_TOKEN"
-            }
+            detail="Invalid or expired token"
         )
     
     return token_payload["user_id"]
@@ -78,16 +75,16 @@ async def add_beneficiary(
             request_id=request_id
         )
         
-        if not result["success"]:
+        if result["status"] != "success":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "message": result["message"],
-                    "error_code": result["error_code"]
-                }
+                detail=result["message"]
             )
         
         logger.info(f"Beneficiary added successfully by user {user_id}: {beneficiary_data.name}")
+        
+        # Add success field for backward compatibility with tests
+        result["success"] = True
         return result
         
     except HTTPException:
@@ -96,10 +93,7 @@ async def add_beneficiary(
         logger.error(f"Add beneficiary error for user {user_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Failed to add beneficiary",
-                "error_code": "INTERNAL_ERROR"
-            }
+            detail="Failed to add beneficiary"
         )
 
 
@@ -125,15 +119,13 @@ async def list_beneficiaries(
             list_request
         )
         
-        if not result["success"]:
+        if result["status"] != "success":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "message": result["message"],
-                    "error_code": result["error_code"]
-                }
+                detail=result["message"]
             )
         
+        result["success"] = True
         return result
         
     except HTTPException:
@@ -142,10 +134,7 @@ async def list_beneficiaries(
         logger.error(f"List beneficiaries error for user {user_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Failed to retrieve beneficiaries",
-                "error_code": "INTERNAL_ERROR"
-            }
+            detail="Failed to retrieve beneficiaries"
         )
 
 
@@ -181,10 +170,7 @@ async def get_all_beneficiaries(
         logger.error(f"Get beneficiaries error for user {user_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Failed to retrieve beneficiaries",
-                "error_code": "INTERNAL_ERROR"
-            }
+            detail="Failed to retrieve beneficiaries"
         )
 
 
@@ -217,20 +203,18 @@ async def update_beneficiary(
             request_id=request_id
         )
         
-        if not result["success"]:
+        if result["status"] != "success":
             status_code = status.HTTP_400_BAD_REQUEST
-            if result["error_code"] == "BENEFICIARY_NOT_FOUND":
+            if result.get("error_code") == "BENEFICIARY_NOT_FOUND":
                 status_code = status.HTTP_404_NOT_FOUND
             
             raise HTTPException(
                 status_code=status_code,
-                detail={
-                    "message": result["message"],
-                    "error_code": result["error_code"]
-                }
+                detail=result["message"]
             )
         
         logger.info(f"Beneficiary updated successfully by user {user_id}: {beneficiary_id}")
+        result["success"] = True
         return result
         
     except HTTPException:
@@ -239,10 +223,7 @@ async def update_beneficiary(
         logger.error(f"Update beneficiary error for user {user_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Failed to update beneficiary",
-                "error_code": "INTERNAL_ERROR"
-            }
+            detail="Failed to update beneficiary"
         )
 
 
@@ -271,20 +252,18 @@ async def remove_beneficiary(
             request_id=request_id
         )
         
-        if not result["success"]:
+        if result["status"] != "success":
             status_code = status.HTTP_400_BAD_REQUEST
-            if result["error_code"] == "BENEFICIARY_NOT_FOUND":
+            if result.get("error_code") == "BENEFICIARY_NOT_FOUND":
                 status_code = status.HTTP_404_NOT_FOUND
             
             raise HTTPException(
                 status_code=status_code,
-                detail={
-                    "message": result["message"],
-                    "error_code": result["error_code"]
-                }
+                detail=result["message"]
             )
         
         logger.info(f"Beneficiary removed successfully by user {user_id}: {beneficiary_id}")
+        result["success"] = True
         return result
         
     except HTTPException:
@@ -293,10 +272,7 @@ async def remove_beneficiary(
         logger.error(f"Remove beneficiary error for user {user_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Failed to remove beneficiary",
-                "error_code": "INTERNAL_ERROR"
-            }
+            detail="Failed to remove beneficiary"
         )
 
 
@@ -320,15 +296,13 @@ async def search_beneficiaries(
             search_request
         )
         
-        if not result["success"]:
+        if result["status"] != "success":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "message": result["message"],
-                    "error_code": result["error_code"]
-                }
+                detail=result["message"]
             )
         
+        result["success"] = True
         return result
         
     except HTTPException:
@@ -337,10 +311,44 @@ async def search_beneficiaries(
         logger.error(f"Search beneficiaries error for user {user_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Failed to search beneficiaries",
-                "error_code": "INTERNAL_ERROR"
-            }
+            detail="Failed to search beneficiaries"
+        )
+
+
+@router.get("/{beneficiary_id}")
+async def get_beneficiary(
+    beneficiary_id: str,
+    user_id: str = Depends(get_current_user_id),
+    beneficiary_service: BeneficiaryService = Depends(get_beneficiary_service)
+) -> Dict[str, Any]:
+    """
+    Get a single beneficiary by ID.
+    """
+    try:
+        logger.info(f"Get beneficiary requested by user {user_id}: {beneficiary_id}")
+        
+        result = await beneficiary_service.get_beneficiary(user_id, beneficiary_id)
+        
+        if result["status"] != "success":
+            status_code = status.HTTP_400_BAD_REQUEST
+            if result.get("error_code") == "BENEFICIARY_NOT_FOUND":
+                status_code = status.HTTP_404_NOT_FOUND
+            
+            raise HTTPException(
+                status_code=status_code,
+                detail=result["message"]
+            )
+        
+        result["success"] = True
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get beneficiary error for user {user_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve beneficiary"
         )
 
 
@@ -369,8 +377,5 @@ async def search_beneficiaries_get(
         logger.error(f"Search beneficiaries GET error for user {user_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Failed to search beneficiaries",
-                "error_code": "INTERNAL_ERROR"
-            }
+            detail="Failed to search beneficiaries"
         )

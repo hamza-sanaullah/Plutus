@@ -1,8 +1,8 @@
 log_id,user_id,action,details,timestamp,ip_address,request_id
-LOG-001,USR12345678,login,{"username": "hamza_dev", "success": true},2025-08-29T09:58:00Z,192.168.1.100,REQ-001
-LOG-002,USR12345678,balance_check,{"current_balance": 5000.00},2025-08-29T10:00:00Z,192.168.1.100,REQ-002
-LOG-003,USR12345678,transaction_send,{"to": "Zunaira", "amount": 500.00, "status": "success"},2025-08-29T10:01:00Z,192.168.1.100,REQ-003
-LOG-004,USR87654321,login,{"username": "zunaira_test", "success": true},2025-08-29T10:03:00Z,192.168.1.101,REQ-004
+LOG-001,USR12345678,login,User login successful,2025-08-29T09:58:00Z,192.168.1.100,REQ-001
+LOG-002,USR12345678,balance_check,Balance inquiry completed,2025-08-29T10:00:00Z,192.168.1.100,REQ-002
+LOG-003,USR12345678,transaction_send,Money transfer to Zunaira completed,2025-08-29T10:01:00Z,192.168.1.100,REQ-003
+LOG-004,USR87654321,login,User login successful,2025-08-29T10:03:00Z,192.168.1.101,REQ-004
 LOG-005,USR87654321,transaction_send,{"to": "Husnain", "amount": 1200.50, "status": "success"},2025-08-29T10:05:00Z,192.168.1.101,REQ-005
 LOG-006,USR12345678,transaction_send,{"to": "Areesha", "amount": 750.00, "status": "failed", "reason": "Insufficient funds"},2025-08-29T10:10:00Z,192.168.1.100,REQ-006
 LOG-007,USR11223344,login,{"username": "husnain_demo", "success": true},2025-08-29T10:11:00Z,192.168.1.102,REQ-007

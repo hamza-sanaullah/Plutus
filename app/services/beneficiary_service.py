@@ -45,7 +45,8 @@ class BeneficiaryService(BaseService):
             # Validate beneficiary account details
             account_validation = self.security.validate_beneficiary_account(
                 beneficiary_data.account_number,
-                beneficiary_data.bank_name
+                beneficiary_data.bank_name,
+                getattr(beneficiary_data, 'iban', None)
             )
             
             if not account_validation["valid"]:
@@ -226,6 +227,41 @@ class BeneficiaryService(BaseService):
                 "INTERNAL_ERROR"
             )
     
+    async def get_beneficiary(
+        self,
+        user_id: str,
+        beneficiary_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get a single beneficiary by ID.
+        """
+        try:
+            # Find beneficiary
+            beneficiary = await self.get_beneficiary_by_id(user_id, beneficiary_id)
+            if not beneficiary:
+                return self.create_error_response(
+                    "Beneficiary not found",
+                    "BENEFICIARY_NOT_FOUND"
+                )
+            
+            return self.create_success_response(
+                "Beneficiary retrieved successfully",
+                {
+                    "beneficiary_id": beneficiary['beneficiary_id'],
+                    "name": beneficiary['name'],
+                    "bank_name": beneficiary['bank_name'],
+                    "account_number": beneficiary['account_number'],
+                    "added_at": beneficiary['added_at']
+                }
+            )
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get beneficiary {beneficiary_id} for user {user_id}: {str(e)}")
+            return self.create_error_response(
+                "Failed to retrieve beneficiary",
+                "INTERNAL_ERROR"
+            )
+
     async def remove_beneficiary(
         self,
         user_id: str,
@@ -503,6 +539,10 @@ class BeneficiaryService(BaseService):
             if beneficiaries_df.empty:
                 return None
             
+            # Ensure account_number column is string type for comparison
+            if 'account_number' in beneficiaries_df.columns:
+                beneficiaries_df['account_number'] = beneficiaries_df['account_number'].astype(str)
+            
             matches = beneficiaries_df[
                 (beneficiaries_df['owner_user_id'] == user_id) &
                 (beneficiaries_df['account_number'] == account_number)
@@ -551,3 +591,7 @@ def get_beneficiary_service() -> BeneficiaryService:
     Dependency to get beneficiary service instance.
     """
     return beneficiary_service
+
+
+# Add alias for delete_beneficiary for test compatibility
+BeneficiaryService.delete_beneficiary = BeneficiaryService.remove_beneficiary

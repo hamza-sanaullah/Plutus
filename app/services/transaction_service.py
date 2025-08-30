@@ -9,6 +9,7 @@ Date: August 29, 2025
 from typing import Dict, Any, Optional, List
 import pandas as pd
 from decimal import Decimal
+from datetime import datetime
 
 from .base_service import BaseService
 from ..schemas.transaction_schemas import (
@@ -54,7 +55,7 @@ class TransactionService(BaseService):
                 )
             
             # Validate amount
-            amount = transaction_data.amount
+            amount = Decimal(str(transaction_data.amount))  # Convert to Decimal for consistent math
             if amount <= 0:
                 return self.create_error_response(
                     "Amount must be greater than zero",
@@ -62,21 +63,23 @@ class TransactionService(BaseService):
                 )
             
             # Check minimum transfer amount
-            if amount < self.settings.min_transfer_amount:
+            min_amount = Decimal(str(self.settings.min_transaction_amount))
+            if amount < min_amount:
                 return self.create_error_response(
-                    f"Minimum transfer amount is PKR {self.settings.min_transfer_amount}",
+                    f"Minimum transfer amount is PKR {min_amount}",
                     "AMOUNT_TOO_LOW"
                 )
             
             # Check maximum transfer amount
-            if amount > self.settings.max_transfer_amount:
+            max_amount = Decimal(str(self.settings.max_transaction_amount))
+            if amount > max_amount:
                 return self.create_error_response(
-                    f"Maximum transfer amount is PKR {self.settings.max_transfer_amount}",
+                    f"Maximum transfer amount is PKR {max_amount}",
                     "AMOUNT_TOO_HIGH"
                 )
             
             # Check user balance
-            user_balance = Decimal(user.get('balance', 0))
+            user_balance = Decimal(str(user.get('balance', 0)))
             if user_balance < amount:
                 return self.create_error_response(
                     f"Insufficient balance. Available: PKR {user_balance}",
@@ -94,36 +97,47 @@ class TransactionService(BaseService):
             # Generate transaction ID
             transaction_id = self.security.generate_transaction_id()
             
-            # Create transaction record
+            # Create transaction record for CSV format
+            # CSV format: transaction_id,from_user_id,to_user_id,from_account,to_account,amount,status,description,timestamp,daily_total_sent
+            
+            # Get current daily total for user
+            current_daily_total = await self.get_daily_total_sent(user_id)
+            new_daily_total = current_daily_total + float(amount)
+            
             transaction_record = {
                 "transaction_id": transaction_id,
-                "sender_user_id": user_id,
-                "sender_name": user['full_name'],
-                "sender_account": user['account_number'],
-                "beneficiary_id": transaction_data.beneficiary_id,
-                "beneficiary_name": beneficiary['name'],
-                "beneficiary_account": beneficiary['account_number'],
-                "beneficiary_bank": beneficiary['bank_name'],
+                "from_user_id": user_id,
+                "to_user_id": transaction_data.beneficiary_id,  # Using beneficiary_id for external transfers
+                "from_account": user['account_number'],
+                "to_account": beneficiary['account_number'],
                 "amount": float(amount),
-                "transaction_fee": 0.0,  # No fee for now
-                "total_amount": float(amount),
-                "description": transaction_data.description or "Money transfer",
                 "status": "processing",
-                "created_at": self.create_timestamp(),
-                "completed_at": None,
-                "failure_reason": None
+                "description": transaction_data.description or "Money transfer",
+                "timestamp": self.create_timestamp(),
+                "daily_total_sent": new_daily_total
             }
             
             # Process the transaction in steps
             
             # Step 1: Deduct amount from sender
-            balance_update = await self.update_user_balance(
+            current_balance = Decimal(user.get('balance', 0))
+            new_balance = current_balance - amount
+            
+            if new_balance < 0:
+                return self.create_error_response(
+                    "Insufficient balance for this transaction",
+                    "INSUFFICIENT_BALANCE"
+                )
+            
+            balance_update_success = await self.update_user_balance(
                 user_id, 
-                -amount, 
+                float(new_balance),
+                "transfer_debit",
+                float(amount),
                 f"Transfer to {beneficiary['name']}"
             )
             
-            if not balance_update["success"]:
+            if not balance_update_success:
                 return self.create_error_response(
                     "Failed to deduct amount from your account",
                     "BALANCE_UPDATE_FAILED"
@@ -133,9 +147,12 @@ class TransactionService(BaseService):
             limit_update = await self.update_daily_transfer_limit(user_id, amount)
             if not limit_update:
                 # Rollback balance update
+                rollback_balance = current_balance  # Restore original balance
                 await self.update_user_balance(
                     user_id, 
-                    amount, 
+                    float(rollback_balance),
+                    "transfer_rollback",
+                    float(amount),
                     f"Rollback failed transfer to {beneficiary['name']}"
                 )
                 return self.create_error_response(
@@ -144,8 +161,7 @@ class TransactionService(BaseService):
                 )
             
             # Step 3: Complete transaction
-            transaction_record["status"] = "completed"
-            transaction_record["completed_at"] = self.create_timestamp()
+            transaction_record["status"] = "success"  # Changed from "completed" to "success" to match CSV
             
             # Save transaction to CSV
             success = await self.storage.append_csv(
@@ -155,9 +171,12 @@ class TransactionService(BaseService):
             
             if not success:
                 # Rollback all changes
+                rollback_balance = current_balance  # Restore original balance
                 await self.update_user_balance(
                     user_id, 
-                    amount, 
+                    float(rollback_balance),
+                    "transfer_rollback",
+                    float(amount),
                     f"Rollback failed transfer to {beneficiary['name']}"
                 )
                 await self.rollback_daily_transfer_limit(user_id, amount)
@@ -169,7 +188,7 @@ class TransactionService(BaseService):
             
             # Get updated user balance
             updated_user = await self.get_user_by_id(user_id)
-            new_balance = Decimal(updated_user.get('balance', 0))
+            final_balance = Decimal(updated_user.get('balance', 0))
             
             # Log transaction
             await self.log_audit(
@@ -179,7 +198,7 @@ class TransactionService(BaseService):
                     "transaction_id": transaction_id,
                     "beneficiary_name": beneficiary['name'],
                     "amount": float(amount),
-                    "new_balance": float(new_balance)
+                    "new_balance": float(final_balance)
                 },
                 ip_address=ip_address,
                 request_id=request_id
@@ -196,8 +215,8 @@ class TransactionService(BaseService):
                     "transaction_id": transaction_id,
                     "amount": float(amount),
                     "beneficiary_name": beneficiary['name'],
-                    "new_balance": float(new_balance),
-                    "transaction_time": transaction_record["completed_at"]
+                    "new_balance": float(final_balance),
+                    "transaction_time": transaction_record["timestamp"]
                 }
             )
             
@@ -387,6 +406,109 @@ class TransactionService(BaseService):
                 "INTERNAL_ERROR"
             )
     
+    async def get_transaction_details(
+        self,
+        user_id: str,
+        transaction_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get detailed information about a specific transaction.
+        """
+        try:
+            transactions_df = await self.storage.read_csv(self.settings.transactions_csv)
+            
+            if transactions_df.empty:
+                return self.create_error_response(
+                    "Transaction not found",
+                    "TRANSACTION_NOT_FOUND"
+                )
+            
+            # Find transaction that belongs to this user
+            transaction = transactions_df[
+                (transactions_df['transaction_id'] == transaction_id) &
+                ((transactions_df['sender_user_id'] == user_id) | 
+                 (transactions_df['receiver_user_id'] == user_id))
+            ]
+            
+            if transaction.empty:
+                return self.create_error_response(
+                    "Transaction not found or access denied",
+                    "TRANSACTION_NOT_FOUND"
+                )
+            
+            transaction_data = transaction.iloc[0]
+            
+            return self.create_success_response(
+                "Transaction details retrieved successfully",
+                {
+                    "transaction_id": transaction_data['transaction_id'],
+                    "sender_account": transaction_data.get('sender_account'),
+                    "receiver_account": transaction_data.get('receiver_account'),
+                    "beneficiary_name": transaction_data['beneficiary_name'],
+                    "beneficiary_bank": transaction_data['beneficiary_bank'],
+                    "amount": float(transaction_data['amount']),
+                    "description": transaction_data['description'],
+                    "status": transaction_data['status'],
+                    "created_at": transaction_data['created_at'],
+                    "completed_at": transaction_data.get('completed_at'),
+                    "failure_reason": transaction_data.get('failure_reason'),
+                    "transaction_type": "outgoing" if transaction_data['sender_user_id'] == user_id else "incoming"
+                }
+            )
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get transaction details for {transaction_id}: {str(e)}")
+            return self.create_error_response(
+                "Failed to retrieve transaction details",
+                "INTERNAL_ERROR"
+            )
+    
+    def create_date(self) -> str:
+        """Create date string in YYYY-MM-DD format."""
+        return datetime.now().strftime("%Y-%m-%d")
+    
+    async def get_user_daily_transfer_info(self, user_id: str) -> Dict[str, Any]:
+        """
+        Get user's daily transfer information by calculating from transactions.
+        """
+        try:
+            # Get today's date for comparison
+            today = self.create_timestamp()[:10]  # Get YYYY-MM-DD part
+            
+            # Read transactions CSV to calculate daily totals
+            transactions_df = await self.storage.read_csv(self.settings.transactions_csv)
+            
+            # Initialize default values
+            transferred_amount = Decimal('0.0')
+            transaction_count = 0
+            
+            if not transactions_df.empty:
+                # Filter transactions for this user today
+                user_transactions = transactions_df[
+                    (transactions_df['from_user_id'] == user_id) &
+                    (transactions_df['timestamp'].str.startswith(today)) &
+                    (transactions_df['status'] == 'success')
+                ]
+                
+                if not user_transactions.empty:
+                    transferred_amount = Decimal(str(user_transactions['amount'].sum()))
+                    transaction_count = len(user_transactions)
+            
+            return {
+                "date": today,
+                "transferred_amount": transferred_amount,
+                "transaction_count": transaction_count
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get daily transfer info for user {user_id}: {str(e)}")
+            # Return default values for new day
+            return {
+                "date": self.create_date(),
+                "transferred_amount": Decimal('0.0'),
+                "transaction_count": 0
+            }
+
     async def check_daily_transfer_limit(
         self,
         user_id: str,
@@ -405,17 +527,20 @@ class TransactionService(BaseService):
             if daily_info["date"] != current_date:
                 daily_info = {
                     "date": current_date,
-                    "transferred_amount": Decimal(0),
+                    "transferred_amount": Decimal('0.0'),
                     "transaction_count": 0
                 }
             
             # Calculate new amounts
-            new_amount = daily_info["transferred_amount"] + amount
+            amount_decimal = Decimal(str(amount))  # Ensure amount is Decimal
+            new_amount = daily_info["transferred_amount"] + amount_decimal
             new_count = daily_info["transaction_count"] + 1
             
             # Check limits
-            if new_amount > self.settings.daily_transfer_limit:
-                remaining = self.settings.daily_transfer_limit - daily_info["transferred_amount"]
+            daily_transfer_limit = Decimal(str(self.settings.daily_transfer_limit))
+            
+            if new_amount > daily_transfer_limit:
+                remaining = daily_transfer_limit - daily_info["transferred_amount"]
                 return {
                     "allowed": False,
                     "message": f"Daily transfer limit exceeded. Remaining: PKR {remaining}",
@@ -428,14 +553,14 @@ class TransactionService(BaseService):
                 return {
                     "allowed": False,
                     "message": f"Daily transaction limit exceeded. Remaining: {remaining_transactions}",
-                    "remaining_amount": float(self.settings.daily_transfer_limit - daily_info["transferred_amount"]),
+                    "remaining_amount": float(daily_transfer_limit - daily_info["transferred_amount"]),
                     "remaining_transactions": remaining_transactions
                 }
             
             return {
                 "allowed": True,
                 "message": "Transfer allowed",
-                "remaining_amount": float(self.settings.daily_transfer_limit - new_amount),
+                "remaining_amount": float(daily_transfer_limit - new_amount),
                 "remaining_transactions": self.settings.daily_transaction_limit - new_count
             }
             
@@ -478,38 +603,29 @@ class TransactionService(BaseService):
     
     async def update_daily_transfer_limit(self, user_id: str, amount: Decimal) -> bool:
         """
-        Update user's daily transfer limit tracking.
+        Update daily transfer limit tracking.
+        Since we track transactions in transactions.csv, daily limits are calculated dynamically.
+        This method just validates that the update is allowed.
         """
         try:
-            # Get current daily info
+            # Get current daily info (calculated from transactions.csv)
             daily_info = await self.get_user_daily_transfer_info(user_id)
             
-            current_date = self.create_date()
+            # Verify the updated totals don't exceed limits
+            user = await self.get_user_by_id(user_id)
+            if not user:
+                return False
             
-            # Reset if new day
-            if daily_info["date"] != current_date:
-                daily_info = {
-                    "date": current_date,
-                    "transferred_amount": Decimal(0),
-                    "transaction_count": 0
-                }
+            daily_limit = Decimal(str(user.get('daily_limit', 10000)))
+            amount_decimal = Decimal(str(amount))  # Ensure amount is Decimal
+            new_total = daily_info["transferred_amount"] + amount_decimal
             
-            # Update amounts
-            new_amount = daily_info["transferred_amount"] + amount
-            new_count = daily_info["transaction_count"] + 1
+            if new_total > daily_limit:
+                self.logger.warning(f"Daily limit would be exceeded for user {user_id}: {new_total} > {daily_limit}")
+                return False
             
-            # Update user daily limits
-            success = await self.storage.update_row(
-                self.settings.users_csv,
-                {"user_id": user_id},
-                {
-                    "daily_transfer_date": current_date,
-                    "daily_transferred_amount": float(new_amount),
-                    "daily_transaction_count": new_count
-                }
-            )
-            
-            return success
+            # Since transactions are stored in transactions.csv, no additional update needed
+            return True
             
         except Exception as e:
             self.logger.error(f"Failed to update daily transfer limit for user {user_id}: {str(e)}")
@@ -518,30 +634,48 @@ class TransactionService(BaseService):
     async def rollback_daily_transfer_limit(self, user_id: str, amount: Decimal) -> bool:
         """
         Rollback daily transfer limit update.
+        Since we track transactions dynamically, no rollback is needed here.
+        The failed transaction won't be recorded, so daily limits will be correct.
         """
         try:
-            # Get current daily info
-            daily_info = await self.get_user_daily_transfer_info(user_id)
-            
-            # Rollback amounts
-            new_amount = max(Decimal(0), daily_info["transferred_amount"] - amount)
-            new_count = max(0, daily_info["transaction_count"] - 1)
-            
-            # Update user daily limits
-            success = await self.storage.update_row(
-                self.settings.users_csv,
-                {"user_id": user_id},
-                {
-                    "daily_transferred_amount": float(new_amount),
-                    "daily_transaction_count": new_count
-                }
-            )
-            
-            return success
+            # No action needed since daily limits are calculated from successful transactions
+            return True
             
         except Exception as e:
             self.logger.error(f"Failed to rollback daily transfer limit for user {user_id}: {str(e)}")
             return False
+
+    async def get_daily_total_sent(self, user_id: str) -> float:
+        """
+        Get the current daily total sent for a user.
+        """
+        try:
+            # Get today's date
+            today = self.create_timestamp()[:10]  # Get YYYY-MM-DD part
+            
+            # Read transactions CSV
+            transactions_df = await self.storage.read_csv(self.settings.transactions_csv)
+            
+            if transactions_df.empty:
+                return 0.0
+            
+            # Filter transactions for this user today
+            user_transactions = transactions_df[
+                (transactions_df['from_user_id'] == user_id) &
+                (transactions_df['timestamp'].str.startswith(today)) &
+                (transactions_df['status'] == 'success')
+            ]
+            
+            if user_transactions.empty:
+                return 0.0
+            
+            # Sum the amounts
+            total_sent = user_transactions['amount'].sum()
+            return float(total_sent)
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get daily total sent for user {user_id}: {str(e)}")
+            return 0.0
 
 
 # Global instance

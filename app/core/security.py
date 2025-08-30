@@ -85,6 +85,33 @@ class SecurityUtils:
                 headers={"WWW-Authenticate": "Bearer"},
             )
     
+    def verify_access_token(self, token: str) -> Dict[str, Any]:
+        """
+        Verify and decode JWT access token.
+        Returns a standardized response format expected by routers.
+        """
+        try:
+            payload = jwt.decode(
+                token, 
+                self.settings.secret_key, 
+                algorithms=[self.settings.algorithm]
+            )
+            return {
+                "valid": True,
+                "user_id": payload.get("sub"),
+                "email": payload.get("email"),
+                "username": payload.get("username"),
+                "exp": payload.get("exp"),
+                "iat": payload.get("iat")
+            }
+        except JWTError as e:
+            return {
+                "valid": False,
+                "error": str(e),
+                "user_id": None,
+                "email": None
+            }
+    
     def validate_account_number(self, account_number: str) -> Dict[str, Any]:
         """
         Validate user-provided account number format.
@@ -131,7 +158,49 @@ class SecurityUtils:
         """
         return f"USR{uuid.uuid4().hex[:8].upper()}"
     
-    def validate_beneficiary_account(self, account_number: str, bank_name: str) -> Dict[str, Any]:
+    def validate_iban(self, iban: str) -> Dict[str, Any]:
+        """
+        Validate IBAN format.
+        """
+        result = {
+            "valid": True,
+            "errors": [],
+            "formatted_iban": iban.replace(" ", "").upper() if iban else ""
+        }
+        
+        if not iban:
+            return result
+        
+        # Remove spaces and convert to uppercase
+        clean_iban = iban.replace(" ", "").upper()
+        
+        # Basic IBAN format validation
+        if len(clean_iban) < 15 or len(clean_iban) > 34:
+            result["valid"] = False
+            result["errors"].append("IBAN must be between 15-34 characters")
+            return result
+        
+        # Check if it starts with two letters (country code)
+        if not clean_iban[:2].isalpha():
+            result["valid"] = False
+            result["errors"].append("IBAN must start with a valid country code")
+            return result
+        
+        # Check if the rest contains valid characters (letters and digits)
+        if not clean_iban[2:].isalnum():
+            result["valid"] = False
+            result["errors"].append("IBAN contains invalid characters")
+            return result
+        
+        # For Pakistani IBANs, check specific format
+        if clean_iban.startswith("PK") and len(clean_iban) != 24:
+            result["valid"] = False
+            result["errors"].append("Pakistani IBAN must be exactly 24 characters")
+            return result
+        
+        return result
+    
+    def validate_beneficiary_account(self, account_number: str, bank_name: str, iban: str = None) -> Dict[str, Any]:
         """
         Validate beneficiary account details provided by user through chatbot.
         """
@@ -145,6 +214,13 @@ class SecurityUtils:
         if not account_validation["valid"]:
             result["valid"] = False
             result["errors"].extend(account_validation["errors"])
+            
+        # Validate IBAN if provided
+        if iban:
+            iban_validation = self.validate_iban(iban)
+            if not iban_validation["valid"]:
+                result["valid"] = False
+                result["errors"].extend(iban_validation["errors"])
             
         # Validate bank name
         if not bank_name or len(bank_name.strip()) < 3:
@@ -173,8 +249,9 @@ class SecurityUtils:
         )
         
         if not bank_found:
-            # Don't reject, but add a warning
-            result["warning"] = f"Bank '{bank_name}' not in our common banks list, but proceeding"
+            # Reject invalid banks
+            result["valid"] = False
+            result["errors"].append(f"Bank '{bank_name}' is not supported. Please use a recognized Pakistani bank.")
             
         return result
     

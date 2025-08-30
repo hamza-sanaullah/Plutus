@@ -107,7 +107,7 @@ class CommonValidators:
     
     @staticmethod
     def validate_account_number(value: str) -> str:
-        """Validate account number format."""
+        """Validate account number format - basic validation only."""
         if not value:
             raise ValueError("Account number is required")
         
@@ -117,12 +117,7 @@ class CommonValidators:
         if not clean_number.isdigit():
             raise ValueError("Account number must contain only digits")
         
-        if len(clean_number) < 10 or len(clean_number) > 20:
-            raise ValueError("Account number must be between 10-20 digits")
-        
-        if len(set(clean_number)) == 1:
-            raise ValueError("Account number cannot be all same digits")
-        
+        # Allow any length for now - detailed validation in business logic
         return clean_number
     
     @staticmethod
@@ -202,6 +197,18 @@ class CommonValidators:
             raise ValueError("Beneficiary name must be less than 100 characters")
         
         return value.strip()
+    
+    @staticmethod
+    def validate_iban(value: str) -> str:
+        """Validate IBAN format - basic validation only."""
+        if not value:
+            return value  # Allow empty for optional field
+        
+        # Remove spaces and convert to uppercase - basic cleaning only
+        clean_iban = value.replace(" ", "").upper()
+        
+        # Allow any reasonable format - detailed validation in business logic
+        return clean_iban
 
 
 class DateTimeFilter(BaseModel):

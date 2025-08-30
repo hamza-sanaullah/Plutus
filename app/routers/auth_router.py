@@ -54,7 +54,7 @@ async def register_user(
         client_ip = get_client_ip(request)
         request_id = request.headers.get("X-Request-ID")
         
-        logger.info(f"User registration attempt: {user_data.email}")
+        logger.info(f"User registration attempt: {user_data.username}")
         
         result = await auth_service.register_user(
             user_data,
@@ -62,16 +62,16 @@ async def register_user(
             request_id=request_id
         )
         
-        if not result["success"]:
+        if result["status"] != "success":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "message": result["message"],
-                    "error_code": result["error_code"]
+                    "error_code": result.get("error_code")
                 }
             )
         
-        logger.info(f"User registered successfully: {user_data.email}")
+        logger.info(f"User registered successfully: {user_data.username}")
         return result
         
     except HTTPException:
@@ -103,7 +103,7 @@ async def login_user(
         client_ip = get_client_ip(request)
         request_id = request.headers.get("X-Request-ID")
         
-        logger.info(f"User login attempt: {login_data.email}")
+        logger.info(f"User login attempt: {login_data.username}")
         
         result = await auth_service.login_user(
             login_data,
@@ -111,16 +111,16 @@ async def login_user(
             request_id=request_id
         )
         
-        if not result["success"]:
+        if result["status"] != "success":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
                     "message": result["message"],
-                    "error_code": result["error_code"]
+                    "error_code": result.get("error_code")
                 }
             )
         
-        logger.info(f"User logged in successfully: {login_data.email}")
+        logger.info(f"User logged in successfully: {login_data.username}")
         return result
         
     except HTTPException:
@@ -159,12 +159,12 @@ async def refresh_access_token(
             request_id=request_id
         )
         
-        if not result["success"]:
+        if result["status"] != "success":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
                     "message": result["message"],
-                    "error_code": result["error_code"]
+                    "error_code": result.get("error_code")
                 }
             )
         
@@ -222,12 +222,12 @@ async def logout_user(
             request_id=request_id
         )
         
-        if not result["success"]:
+        if result["status"] != "success":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "message": result["message"],
-                    "error_code": result["error_code"]
+                    "error_code": result.get("error_code")
                 }
             )
         
@@ -276,12 +276,12 @@ async def get_user_profile(
         
         result = await auth_service.get_user_profile(user_id)
         
-        if not result["success"]:
+        if result["status"] != "success":
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": result["message"],
-                    "error_code": result["error_code"]
+                    "error_code": result.get("error_code")
                 }
             )
         
@@ -323,7 +323,7 @@ async def verify_token(
             )
         
         return {
-            "success": True,
+            "status": "success",
             "message": "Token is valid",
             "data": {
                 "user_id": token_payload["user_id"],

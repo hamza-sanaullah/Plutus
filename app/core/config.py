@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     # Banking Business Rules
     default_starting_balance: float = 1000.0
     default_daily_limit: float = 10000.0
+    daily_transfer_limit: float = 50000.0
+    daily_transaction_limit: int = 10
     max_transaction_amount: float = 50000.0
     min_transaction_amount: float = 1.0
     

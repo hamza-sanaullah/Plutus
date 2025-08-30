@@ -18,6 +18,7 @@ class BeneficiaryAddRequest(BaseModel):
     name: str = Field(..., description="Beneficiary display name")
     bank_name: str = Field(..., description="Beneficiary's bank name")
     account_number: str = Field(..., description="Beneficiary's account number")
+    iban: Optional[str] = Field(None, description="International Bank Account Number (optional)")
     
     @field_validator('name')
     @classmethod
@@ -36,6 +37,14 @@ class BeneficiaryAddRequest(BaseModel):
     def validate_account_number(cls, v):
         """Validate account number format."""
         return CommonValidators.validate_account_number(v)
+    
+    @field_validator('iban')
+    @classmethod
+    def validate_iban(cls, v):
+        """Validate IBAN format."""
+        if v is not None:
+            return CommonValidators.validate_iban(v)
+        return v
     
     class Config:
         schema_extra = {

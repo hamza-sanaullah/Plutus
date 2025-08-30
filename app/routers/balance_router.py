@@ -63,14 +63,14 @@ async def get_current_balance(
     try:
         logger.info(f"Balance check requested by user: {user_id}")
         
-        result = await balance_service.get_balance(user_id)
+        result = await balance_service.check_balance(user_id)
         
-        if not result["success"]:
+        if not result["status"] == "success":
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
                     "message": result["message"],
-                    "error_code": result["error_code"]
+                    "error_code": "BALANCE_ERROR"
                 }
             )
         
@@ -256,7 +256,7 @@ async def get_balance_summary(
         logger.info(f"Balance summary requested by user {user_id}")
         
         # Get current balance
-        balance_result = await balance_service.get_balance(user_id)
+        balance_result = await balance_service.check_balance(user_id)
         
         if not balance_result["success"]:
             raise HTTPException(

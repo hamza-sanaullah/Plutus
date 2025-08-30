@@ -1,6 +1,15 @@
 """
 Plutus Backend - Transaction Router
-API endpoints for money transfer operations: send money, transaction history, status.
+API endpoints for money transfer operations: sen            elif error_code == "USER_NOT_FOUND":
+                status_code = status.HTTP_404_NOT_FOUND
+            
+            raise HTTPException(
+                status_code=status_code,
+                detail={
+                    "message": result.get("message", "Transaction failed"),
+                    "error_code": error_code
+                }
+            )ransaction history, status.
 
 Team: Yay!
 Date: August 29, 2025
@@ -77,17 +86,18 @@ async def send_money(
             request_id=request_id
         )
         
-        if not result["success"]:
+        if result["status"] != "success":
             # Map error codes to appropriate HTTP status codes
             status_code = status.HTTP_400_BAD_REQUEST
             
-            if result["error_code"] == "INSUFFICIENT_BALANCE":
+            error_code = result.get("error_code", "INTERNAL_ERROR")
+            if error_code == "INSUFFICIENT_BALANCE":
                 status_code = status.HTTP_402_PAYMENT_REQUIRED
-            elif result["error_code"] == "BENEFICIARY_NOT_FOUND":
+            elif error_code == "BENEFICIARY_NOT_FOUND":
                 status_code = status.HTTP_404_NOT_FOUND
-            elif result["error_code"] == "DAILY_LIMIT_EXCEEDED":
+            elif error_code == "DAILY_LIMIT_EXCEEDED":
                 status_code = status.HTTP_429_TOO_MANY_REQUESTS
-            elif result["error_code"] == "USER_NOT_FOUND":
+            elif error_code == "USER_NOT_FOUND":
                 status_code = status.HTTP_404_NOT_FOUND
             
             raise HTTPException(

@@ -1,2 +1,93 @@
-plutus
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.py[cod]
+*$py.class
+
+# pytest cache
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Logs
+logs/
+*.log
+app/logs/
+
+# Data files
+data/backups
+data/*.csv
+
+# Environment files
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Virtual environment
+plutus/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files (but keep the actual test code, only ignore cache)
+app/tests/__pycache__/
+app/tests/*.pyc
+app/tests
+
+# Various script files to ignore
 fix_pydantic.py
+Activate.bat
+AZURE_SETUP_GUIDE.md
+BACKEND_OVERVIEW.md
+BACKEND_STATUS_REPORT.md
+CHATBOT_API_GUIDE.md
+CHATBOT_API_TEST_RESULTS.md
+chatbot_saleem_to_ali.py
+diagnostic_test.py
+direct_transaction_debug.py
+final_demo_fixed.py
+fix_detail.py
+fix_http_exceptions.py
+run_tests.py
+saleem_to_amna_transfer.py
+start_server.py
+test_auth.py
+test_azure_storage.py
+test_backend.py
+test_complete_api_flow.py
+test_chatbot_money_transfer.py
+test_live_server.py
+test_router_debug.py
+test_service_debug.py
+test_transaction_demo.py
+TESTING.md
+transaction_service_debugger.py
+register_saleem.py
+plutus_chatbot_status_report.py
+quick_test.py
+minimal_transaction_test.py
+pytest.ini
+
+# Specific log files
+logs/plutus_2025-08-30.log
+logs/*.log

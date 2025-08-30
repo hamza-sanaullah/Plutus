@@ -17,7 +17,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
-# Logs
+# Logs and log files
 logs/
 *.log
 app/logs/
@@ -49,10 +49,18 @@ plutus/
 .DS_Store
 Thumbs.db
 
-# Test files (but keep the actual test code, only ignore cache)
+# Test files and directories
+app/tests/
 app/tests/__pycache__/
 app/tests/*.pyc
-app/tests
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
 
 # Various script files to ignore
 fix_pydantic.py
@@ -66,6 +74,7 @@ chatbot_saleem_to_ali.py
 diagnostic_test.py
 direct_transaction_debug.py
 final_demo_fixed.py
+final_demo.py
 fix_detail.py
 fix_http_exceptions.py
 run_tests.py
@@ -80,14 +89,31 @@ test_live_server.py
 test_router_debug.py
 test_service_debug.py
 test_transaction_demo.py
+test_balance.py
+test_beneficiaries.py
+test_integrations.py
+test_transactions.py
 TESTING.md
 transaction_service_debugger.py
 register_saleem.py
 plutus_chatbot_status_report.py
 quick_test.py
 minimal_transaction_test.py
+API_ENDPOINTS_SUMMARY.md
+cleanup_duplicates.py
+test_simplified_api.py
+test_simplified_apis.py
+debug_transaction.py
+test_remove_beneficiary.PY
+SIMPLIFIED_API_SUMMARY.md
+SIMPLIFIED_RESPONSES_SUMMARY.md
+CHATBOT_SUCCESS_REPORT.md
+CLEANUP_SUMMARY.md
+saleem_to_amna_transfer_updated.py
+
 pytest.ini
 
 # Specific log files
 logs/plutus_2025-08-30.log
 logs/*.log
+data/README.md

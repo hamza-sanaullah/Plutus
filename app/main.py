@@ -17,7 +17,6 @@ import uuid
 
 # Import routers
 from .routers import (
-    auth_router,
     balance_router,
     beneficiary_router,
     transaction_router
@@ -147,10 +146,9 @@ async def root() -> Dict[str, str]:
 
 
 # Register API routers
-app.include_router(auth_router, tags=["Authentication"])
-app.include_router(balance_router, tags=["Balance Management"])
-app.include_router(beneficiary_router, tags=["Beneficiary Management"])
-app.include_router(transaction_router, tags=["Money Transfer"])
+app.include_router(balance_router, prefix="/api", tags=["Balance Management"])
+app.include_router(beneficiary_router, prefix="/api", tags=["Beneficiary Management"])
+app.include_router(transaction_router, prefix="/api", tags=["Money Transfer"])
 
 
 # Startup event

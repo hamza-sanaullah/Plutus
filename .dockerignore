@@ -1,12 +1,35 @@
-# Python cache files
+# Dockerfile ignore patterns
+# Git
+.git
+.gitignore
+
+# Python cache files (from .gitignore)
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.py[cod]
-*$py.class
 
-# pytest cache
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# pytest cache (from .gitignore)
 .pytest_cache/
 .coverage
 .coverage.*
@@ -15,18 +38,19 @@ nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
-.pytest_cache/
+htmlcov/
+.tox/
 
-# Logs and log files
+# Logs and log files (from .gitignore)
 logs/
 *.log
 app/logs/
 
-# Data files
+# Data files (from .gitignore)
 data/backups
 
 
-# Environment files
+# Environment files (from .gitignore)
 .env
 .venv
 env/
@@ -34,37 +58,38 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.env.local
+.env.*.local
 
-# Virtual environment
+# Virtual environment (from .gitignore)
 plutus/
 
-# IDE files
+# IDE files (from .gitignore)
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-.gitignore
-.dockerignore
 
-# OS files
+# OS files (from .gitignore)
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-# Test files and directories
+# Test files and directories (from .gitignore)
 app/tests/
 app/tests/__pycache__/
 app/tests/*.pyc
-.pytest_cache/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
+test_*.py
+*_test.py
+pytest.ini
+conftest.py
 
-# Various script files to ignore
+# Specific script files to ignore (from .gitignore)
 fix_pydantic.py
 Activate.bat
 AZURE_SETUP_GUIDE.md
@@ -113,10 +138,36 @@ CHATBOT_SUCCESS_REPORT.md
 CLEANUP_SUMMARY.md
 saleem_to_amna_transfer_updated.py
 DOCKER_GUIDE.md
+docker-compose.yml
+Dockerfile
 
-pytest.ini
+# Documentation (keep only essential ones)
+*.md
+!README.md
+!DOCKER_GUIDE.md
 
-# Specific log files
+# Backup files
+backup/
+*.backup
+*.bak
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Development scripts (patterns)
+debug_*.py
+diagnostic_*.py
+*_debug.py
+cleanup_*.py
+fix_*.py
+register_*.py
+*_demo.py
+minimal_*.py
+
+# Specific log files (from .gitignore)
 logs/plutus_2025-08-30.log
 logs/*.log
-data/README.md
+.gitignore

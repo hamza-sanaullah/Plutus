@@ -1,105 +1,143 @@
 # Plutus Backend - CSV Data Schema Documentation
 
-## 📊 CSV File Structures
+## 📊 CSV File Structures (Simplified Backend)
 
 ### 1. users.csv
-**Purpose**: Store user account information and authentication data
+**Purpose**: Store user account information for the simplified banking system
 ```
-user_id,username,hashed_password,account_number,balance,daily_limit,created_at
+user_id,username,account_number,balance,daily_limit,created_at
 ```
 
 **Fields**:
-- `user_id`: Unique user identifier (USR + 8 chars)
-- `username`: User's login username
-- `hashed_password`: Bcrypt hashed password
-- `account_number`: User's bank account number (user-provided)
-- `balance`: Current account balance (float)
-- `daily_limit`: Daily transaction limit (float)
+- `user_id`: Unique user identifier (USR + 8 digits)
+- `username`: User's display name/identifier
+- `account_number`: User's bank account number (16 digits)
+- `balance`: Current account balance (float, default: 5000.0)
+- `daily_limit`: Daily transaction limit (float, default: 10000.0)
 - `created_at`: Account creation timestamp (ISO format)
+
+**Note**: No authentication - simplified system uses direct user_id access
 
 ### 2. beneficiaries.csv
 **Purpose**: Store beneficiary relationships for money transfers
 ```
-owner_user_id,beneficiary_id,name,bank_name,account_number,added_at
+owner_user_id,beneficiary_id,name,account_number,added_at
 ```
 
 **Fields**:
 - `owner_user_id`: User ID who owns this beneficiary
-- `beneficiary_id`: Unique beneficiary identifier (BEN + 8 chars)
-- `name`: Beneficiary's display name
-- `bank_name`: Beneficiary's bank name
-- `account_number`: Beneficiary's account number
+- `beneficiary_id`: Unique beneficiary identifier (BEN + 8 digits)
+- `name`: Beneficiary's display name (used by chatbot)
+- `account_number`: Beneficiary's account number (16 digits)
 - `added_at`: When beneficiary was added (ISO format)
+
+**Note**: No bank_name field - simplified to just account numbers
 
 ### 3. transactions.csv
 **Purpose**: Store all financial transaction records
 ```
-transaction_id,from_user_id,to_user_id,from_account,to_account,amount,status,description,timestamp,daily_total_sent
+transaction_id,from_user_id,to_user_id,amount,description,timestamp
 ```
 
 **Fields**:
-- `transaction_id`: Unique transaction identifier (TXN + timestamp + random)
+- `transaction_id`: Unique transaction identifier (TXN + timestamp-based)
 - `from_user_id`: Sender's user ID
-- `to_user_id`: Receiver's user ID
-- `from_account`: Sender's account number
-- `to_account`: Receiver's account number
+- `to_user_id`: Receiver's user ID (optional - can be external)
 - `amount`: Transaction amount (float)
-- `status`: Transaction status (pending/success/failed)
 - `description`: Transaction description/memo
 - `timestamp`: Transaction timestamp (ISO format)
-- `daily_total_sent`: Running total sent by user today
+
+**Note**: Simplified structure - removed account numbers, status, daily totals
 
 ### 4. audit_logs.csv
-**Purpose**: Audit trail for all system activities
+**Purpose**: System activity audit trail
 ```
-log_id,user_id,action,details,timestamp,ip_address,request_id
+log_id,user_id,action,details,timestamp,request_id
 ```
 
 **Fields**:
-- `log_id`: Unique log identifier
+- `log_id`: Unique log identifier (auto-generated)
 - `user_id`: User who performed the action
-- `action`: Type of action performed
+- `action`: Type of action (balance_check, transfer, add_beneficiary)
 - `details`: JSON string with action details
 - `timestamp`: When action occurred (ISO format)
-- `ip_address`: User's IP address
 - `request_id`: Request identifier for tracking
 
-## 🔄 Data Flow Examples
+**Note**: Simplified - removed IP address tracking
 
-### User Registration Flow:
-1. User provides: username, password, account_number
-2. System generates: user_id, hashed_password, created_at
-3. Default values: balance=1000.00, daily_limit=10000.00
-4. Record added to users.csv
+## 🔄 Simplified Data Flow Examples
 
-### Transaction Flow:
-1. User: "Send 500 to Zunaira"
-2. System checks beneficiaries.csv for "Zunaira"
-3. If found: proceed with transaction
-4. If not found: return "Beneficiary not found"
-5. Transaction record added to transactions.csv
-6. Audit log added to audit_logs.csv
+### Balance Check Flow (Chatbot):
+```
+Input: user_id = "USR12345678"
+Process: Read users.csv, find user
+Output: Current balance
+```
 
-### Beneficiary Addition Flow:
-1. Chatbot provides: name, bank_name, account_number
-2. System generates: beneficiary_id, added_at
-3. Record added to beneficiaries.csv
-4. Audit log added to audit_logs.csv
+### Money Transfer Flow (Chatbot):
+```
+Input: user_id = "USR12345678", recipient_name = "Zunaira", amount = 500
+Process: 
+1. Check beneficiaries.csv for "Zunaira" 
+2. Get recipient account from beneficiary record
+3. Update sender balance in users.csv
+4. Add transaction to transactions.csv
+5. Log action in audit_logs.csv
+Output: Transfer confirmation
+```
 
-## 🔐 Security Notes
+### Add Beneficiary Flow (Chatbot):
+```
+Input: user_id = "USR12345678", name = "Ali", account = "1234567890123456"
+Process:
+1. Generate beneficiary_id
+2. Add to beneficiaries.csv
+3. Log action in audit_logs.csv
+Output: Beneficiary added confirmation
+```
 
-- Passwords are hashed using bcrypt
-- Account numbers are user-provided and validated
-- All financial operations are logged for audit
-- Daily limits are enforced per user
-- IP addresses tracked for security monitoring
+## 🤖 Chatbot Integration
 
-## 📝 Sample Data Notes
+The CSV structure is optimized for chatbot interactions:
 
-The sample data includes:
-- 5 test users with realistic Pakistani names
-- Various bank account numbers
-- Beneficiary relationships between users
-- Transaction history with different statuses
-- Comprehensive audit logs
-- Realistic balances and daily limits
+**Supported Chatbot Commands**:
+- `"Check balance"` → Returns user balance
+- `"Send 500 to Zunaira"` → Transfer money to beneficiary
+- `"Add beneficiary Ali with account 1234567890123456"` → Add new beneficiary
+
+**Chatbot Benefits**:
+- No authentication needed (direct user_id)
+- Simple name-based beneficiary lookup
+- Clear transaction descriptions
+- Instant balance updates
+
+## 📝 Sample Data Structure
+
+### Sample Users:
+- `USR12345678`: hamza_dev (Balance: 4068.5)
+- `USR87654321`: zunaira_user (Balance: 5500.0)
+- `USR11223344`: ali_hassan (Balance: 3200.0)
+
+### Sample Beneficiaries:
+- Hamza → Zunaira, Ali, Amna
+- Zunaira → Hamza, Ali
+- Ali → Hamza, Zunaira
+
+### Sample Transactions:
+- Regular transfers between users
+- Various amounts (100-2000 range)
+- Descriptive transaction messages
+
+## � API Integration
+
+**CSV File Usage by API Endpoints**:
+- `/api/balance/{user_id}` → reads users.csv
+- `/api/transfer` → reads beneficiaries.csv, updates users.csv, writes transactions.csv
+- `/api/beneficiaries/{user_id}` → reads beneficiaries.csv
+- `/api/add-beneficiary` → writes beneficiaries.csv
+
+**File Management**:
+- Automatic CSV file creation if missing
+- Header validation on startup
+- Concurrent read/write handling
+- Data persistence across container restarts

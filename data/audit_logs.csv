@@ -1,5 +1,0 @@
-log_id,user_id,action,details,timestamp,ip_address
-LOG-001,USR12345678,balance_check,Balance inquiry completed,2025-08-29T10:00:00Z,192.168.1.100
-LOG-002,USR12345678,transaction_send,Money transfer to Zunaira completed,2025-08-29T10:01:00Z,192.168.1.100
-LOG-003,USR87654321,transaction_send,Payment to Husnain completed,2025-08-29T10:05:00Z,192.168.1.101
-LOG-004,USR11223344,transaction_send,Business payment to Ahmed completed,2025-08-29T10:12:00Z,192.168.1.102

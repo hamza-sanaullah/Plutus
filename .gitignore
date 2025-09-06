@@ -136,6 +136,9 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Project-specific folders to ignore
 venv/
 fron_plu/
+frontend_plutus/
 .frontend_plutus/
